@@ -1,0 +1,14 @@
+PODS:
+  - EmailFeedback (0.1.0)
+
+DEPENDENCIES:
+  - EmailFeedback (from `../`)
+
+EXTERNAL SOURCES:
+  EmailFeedback:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  EmailFeedback: 20c9367d534a7292815ab5fa917290310ed56af9
+
+COCOAPODS: 0.36.4

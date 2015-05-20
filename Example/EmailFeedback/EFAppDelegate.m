@@ -7,12 +7,13 @@
 //
 
 #import "EFAppDelegate.h"
+#import "EmailFeedback.h"
 
 @implementation EFAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // Override point for customization after application launch.
+    [[EmailFeedback defaultFeedback] ping];
     return YES;
 }
 							
