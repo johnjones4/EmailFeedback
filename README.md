@@ -24,7 +24,8 @@ pod "EmailFeedback"
 
 In your app delegate, add the following:
 
-```[EmailFeedback defaultFeedback].reviewURL = [NSURL URLWithString:@“URL to iTunes Store page”];
+```
+[EmailFeedback defaultFeedback].reviewURL = [NSURL URLWithString:@“URL to iTunes Store page”];
 [EmailFeedback defaultFeedback].emailRecipient = @“test@example.com”;
 [[EmailFeedback defaultFeedback] ping]
 ```
