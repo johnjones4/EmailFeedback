@@ -184,7 +184,10 @@ NSString* const EFUserDetailNotProvided = @"[NOT PROVIDED]";
         } else {
             SEL selector = NSSelectorFromString(property);
             if ([object respondsToSelector:selector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
                 value = [object performSelector:selector];
+#pragma clang diagnostic pop
             }
         }
         if (!value) {
