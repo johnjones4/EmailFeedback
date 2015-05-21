@@ -11,6 +11,18 @@
 NSTimeInterval const EFDefaultReviewInterval = 2592000;
 NSString* const EFUserDetaultsMarkerDate = @"ef_marker_date";
 NSString* const EFUserDetaultsReviewPromptDate = @"ef_review_prompt";
+NSString* const EFUserDetailNotProvided = @"[NOT PROVIDED]";
+
+@interface EmailFeedback() {
+    UIViewController* root;
+    UIAlertView* reviewPrompt;
+    UIAlertView* feedbackPrompt;
+}
+
+- (NSString*)_defaultEmailBody;
+- (void)_processPropertyDictionary:(NSDictionary*)dict fromObject:(id)object intoArray:(NSMutableArray*)array;
+
+@end
 
 @implementation EmailFeedback
 
@@ -22,12 +34,16 @@ NSString* const EFUserDetaultsReviewPromptDate = @"ef_review_prompt";
         self.promptReviewAfter = EFDefaultReviewInterval;
         self.repeatPrompt = NO;
         
-        self.promptTitle = @"Feedback?";
-        self.promptMessage = @"If you like this app, please write us a review! We'd also love to hear feedback from you directly if you have suggestions.";
+        self.reviewPromptTitle = @"Review Us?";
+        self.reviewPromptMessage = @"If you like this app, would you mind writing a review for us?";
+        self.feedbackPromptTitle = @"Feedback";
+        self.feedbackPromptMessage = @"Would you prefer to send us feedback directly to help us improve the app?";
         self.promptCancelLabel = @"No Thanks";
-        self.promptReviewLabel = @"Review";
+        self.promptReviewLabel = @"Write Review";
         self.promptSendFeedbackLabel = @"Send Feedback";
         
+        self.emailSubject = @"App Feedback";
+        self.emailIsHTML = NO;
         
         NSUserDefaults* defs = [NSUserDefaults standardUserDefaults];
         
@@ -62,31 +78,119 @@ NSString* const EFUserDetaultsReviewPromptDate = @"ef_review_prompt";
 }
 
 - (void)promptForReview {
-    UIAlertView* alert = [[UIAlertView alloc] initWithTitle:self.promptTitle
-                                                    message:self.promptMessage
+    if (self.reviewURL) {
+        reviewPrompt = [[UIAlertView alloc] initWithTitle:self.reviewPromptTitle
+                                                  message:self.reviewPromptMessage
+                                                 delegate:self
+                                        cancelButtonTitle:self.promptCancelLabel
+                                        otherButtonTitles:self.promptReviewLabel,nil];
+        [reviewPrompt show];
+    }
+}
+
+- (void)promptForFeedback {
+    if ([MFMailComposeViewController canSendMail] && self.emailRecipient && self.emailSubject) {
+        feedbackPrompt = [[UIAlertView alloc] initWithTitle:self.feedbackPromptTitle
+                                                    message:self.feedbackPromptMessage
                                                    delegate:self
                                           cancelButtonTitle:self.promptCancelLabel
-                                          otherButtonTitles:nil];
-    if (self.reviewURL) {
-        [alert addButtonWithTitle:self.promptReviewLabel];
+                                          otherButtonTitles:self.promptSendFeedbackLabel, nil];
+        [feedbackPrompt show];
     }
-    [alert addButtonWithTitle:self.promptSendFeedbackLabel];
-    [alert show];
 }
 
 - (void)sendFeedback {
-    UIViewController* root = [UIApplication sharedApplication].keyWindow.rootViewController;
-    //TODO
+    root = [UIApplication sharedApplication].keyWindow.rootViewController;
+    MFMailComposeViewController *composeViewController = [[MFMailComposeViewController alloc] initWithNibName:nil
+                                                                                                       bundle:nil];
+    composeViewController.mailComposeDelegate = self;
+    [composeViewController setToRecipients:@[self.emailRecipient]];
+    [composeViewController setSubject:self.emailSubject];
+    if (!self.emailBody) {
+        self.emailBody = [self _defaultEmailBody];
+    }
+    [composeViewController setMessageBody:self.emailBody isHTML:self.emailIsHTML];
+    [root presentViewController:composeViewController animated:YES completion:nil];
 }
 
 #pragma mark UIAlertViewDelegate
 
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
     NSString* title = [alertView buttonTitleAtIndex:buttonIndex];
     if ([title isEqualToString:self.promptReviewLabel]) {
         [[UIApplication sharedApplication] openURL:self.reviewURL];
     } else if ([title isEqualToString:self.promptSendFeedbackLabel]) {
         [self sendFeedback];
+    } else if ([title isEqualToString:self.promptCancelLabel] && alertView == reviewPrompt) {
+        [self promptForFeedback];
+    }
+    reviewPrompt = nil;
+    feedbackPrompt = nil;
+}
+
+#pragma mark MFMailComposeViewControllerDelegate
+
+- (void)mailComposeController:(MFMailComposeViewController*)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError*)error {
+    [root dismissViewControllerAnimated:YES completion:nil];
+    root = nil;
+}
+
+#pragma mark Private
+
+- (NSString*)_defaultEmailBody {
+    if (self.sendUserDetails) {
+        NSMutableArray* userData = [[NSMutableArray alloc] init];
+        
+        [self _processPropertyDictionary:@{
+                                           @"Device Name": @"name",
+                                           @"Device System Name": @"systemName",
+                                           @"Device System Version": @"systemVersion",
+                                           @"Device Model": @"model",
+                                           @"Device Localized Model": @"localizedModel",
+                                           @"Device Vendor ID": @"identifierForVendor"
+                                           }
+                              fromObject: [UIDevice currentDevice]
+                               intoArray:userData];
+        
+        [self _processPropertyDictionary:@{
+                                           @"System Version": @"operatingSystemVersionString"
+                                           }
+                              fromObject:[NSProcessInfo processInfo]
+                               intoArray:userData];
+        
+        [self _processPropertyDictionary:@{
+                                           @"App Bundle": @"CFBundleIdentifier",
+                                           @"App Short Version": @"CFBundleShortVersionString",
+                                           @"App Version": @"CFBundleVersion"
+                                           }
+                              fromObject:[[NSBundle mainBundle] infoDictionary]
+                               intoArray:userData];
+        
+        NSArray* langs = [NSLocale preferredLanguages];
+        [userData addObject:[NSString stringWithFormat:@"Languages: %@",[langs componentsJoinedByString:@", "]]];
+        
+        return [@"Your feedback ...\n\n\n\n" stringByAppendingString:[userData componentsJoinedByString:@"\n"]];
+    } else {
+        return @"";
+    }
+}
+
+- (void)_processPropertyDictionary:(NSDictionary*)dict fromObject:(id)object intoArray:(NSMutableArray*)array {
+    for(NSString* key in dict.allKeys) {
+        NSString* property = [dict valueForKey:key];
+        id value = nil;
+        if ([object isKindOfClass:[NSDictionary class]]) {
+            value = [object objectForKey:property];
+        } else {
+            SEL selector = NSSelectorFromString(property);
+            if ([object respondsToSelector:selector]) {
+                value = [object performSelector:selector];
+            }
+        }
+        if (!value) {
+            value = EFUserDetailNotProvided;
+        }
+        [array addObject:[NSString stringWithFormat:@"%@: %@",key,value]];
     }
 }
 

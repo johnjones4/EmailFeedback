@@ -9,6 +9,6 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  EmailFeedback: 20c9367d534a7292815ab5fa917290310ed56af9
+  EmailFeedback: 2c0a857db04205a89a15bfbeab444244ec4b8064
 
 COCOAPODS: 0.36.4

@@ -13,7 +13,9 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    [[EmailFeedback defaultFeedback] ping];
+    [EmailFeedback defaultFeedback].emailRecipient = @"test@example.com";
+    [EmailFeedback defaultFeedback].reviewURL = [NSURL URLWithString:@"http://example.com"];
+    [[EmailFeedback defaultFeedback] promptForReview];
     return YES;
 }
 							
