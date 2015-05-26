@@ -99,18 +99,23 @@ NSString* const EFUserDetailNotProvided = @"[NOT PROVIDED]";
     }
 }
 
-- (void)sendFeedback {
+- (MFMailComposeViewController*)sendFeedback:(BOOL)presentViewController {
     root = [UIApplication sharedApplication].keyWindow.rootViewController;
     MFMailComposeViewController *composeViewController = [[MFMailComposeViewController alloc] initWithNibName:nil
                                                                                                        bundle:nil];
-    composeViewController.mailComposeDelegate = self;
     [composeViewController setToRecipients:@[self.emailRecipient]];
     [composeViewController setSubject:self.emailSubject];
     if (!self.emailBody) {
         self.emailBody = [self _defaultEmailBody];
     }
     [composeViewController setMessageBody:self.emailBody isHTML:self.emailIsHTML];
-    [root presentViewController:composeViewController animated:YES completion:nil];
+    
+    if (presentViewController) {
+        composeViewController.mailComposeDelegate = self;
+        [root presentViewController:composeViewController animated:YES completion:nil];
+    }
+    
+    return composeViewController;
 }
 
 #pragma mark UIAlertViewDelegate
@@ -120,7 +125,7 @@ NSString* const EFUserDetailNotProvided = @"[NOT PROVIDED]";
     if ([title isEqualToString:self.promptReviewLabel]) {
         [[UIApplication sharedApplication] openURL:self.reviewURL];
     } else if ([title isEqualToString:self.promptSendFeedbackLabel]) {
-        [self sendFeedback];
+        [self sendFeedback:true];
     } else if ([title isEqualToString:self.promptCancelLabel] && alertView == reviewPrompt) {
         [self promptForFeedback];
     }

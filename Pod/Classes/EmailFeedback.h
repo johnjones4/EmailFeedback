@@ -36,6 +36,6 @@ extern NSString* const EFUserDetailNotProvided;
 - (void)ping;
 - (void)promptForReview;
 - (void)promptForFeedback;
-- (void)sendFeedback;
+- (MFMailComposeViewController*)sendFeedback:(BOOL)presentViewController;
 
 @end
